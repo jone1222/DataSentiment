@@ -4,18 +4,81 @@ df <- read_excel("NamYang_Data_Refined.xlsx",col_names=T,na="NA")
 
 library(KoNLP)
 
-dics <- c('woorimalsam')
+#build dic
+dics <- c('woorimalsam') #sejong ...
 category <- c('emotions')
-user_d <- data.frame(readLines("fillmeup.txt"), "ncn")
-
+user_d <- data.frame(readLines("wenoun.txt"), "ncn") #fill this file
 buildDictionary(ext_dic = dics,
                 category_dic_nms = category, 
                 user_dic = user_d,
                 replace_usr_dic = F,)
 
-df$content[1]
-print(extractNoun(df$content[1]))
+#extraction for noun
+#install.packages("stringr")
+library(stringr)
+user_werm <- data.frame(readLines("werm.txt"), "ncn")
+doc2 <- paste(SimplePos22(df$content[1]))
+doc3 <- str_match(doc2, "([가-힣]+)/NC")
+doc3
+?str_match
+doc4 <- doc3[,2]
+doc4
+doc4[!is.na(doc4)]
 
+NC <- function(doc){
+  #doc <- as.character(doc)
+  doc2 <- paste(SimplePos22(doc))
+  doc3 <- str_match(doc2, "([가-힣]+)/NC")
+  doc4 <- doc3[,2]
+  doc4[!is.na(doc4)]
+  return(doc4[!is.na(doc4)])
+}
+
+unique(unlist(strsplit(PosiNega(posi[1:100]), " ")))
+
+P <- function(doc){
+  #doc <- as.character(doc)
+  doc2 <- paste(SimplePos22(doc))
+  doc3 <- str_match(doc2, "([가-힣]+)/PV")
+  doc4 <- doc3[,2]
+  doc4[!is.na(doc4)]
+  return(doc4[!is.na(doc4)])
+}
+
+
+PosiNega <- function(vec){
+  ret <- c()
+  i <- 0
+  for(line in vec){
+    print(paste(SimplePos22(line)))
+    nc <- NC(line)
+    print("NCCCCCC")
+    print(nc)
+    print("PPPPPPP")
+    p <- P(line)
+    print(p)
+    ret <- c(ret, nc[str_length(nc) > 1], p[str_length(p) > 1])
+    
+    print("------------")
+    i <- i + 1
+  }
+  return(ret)
+}
+a <- c("난", "가난 ", "배고", " ")
+
+
+posi <- readLines("neg_pol_word.txt")
+
+test <- unique(unlist(strsplit(PosiNega(posi[1:9826]), " ")))
+class(PosiNega(str_split("나는 매우 가난하다 그런데 ..", " ")))
+PosiNega("나는 매우 가난하다 그런데 ..")
+
+# data1 <- df$content[1:10]
+# data2 <- Map(extractNoun, txt1)
+# data2
+# rapply(data2, function(x) gsub())
+
+#--------trash
 #Quotes_Eliminator <- function(x){
 #  return(substr(x,3,6))
 #}
