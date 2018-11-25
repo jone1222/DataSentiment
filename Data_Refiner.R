@@ -1,7 +1,10 @@
 library(readxl)
 setwd("/Users/theorist/Documents/R-WorkingDirectory/DataSentiment")
 df <- read_excel("NamYang_Data_Refined.xlsx",col_names=T,na="NA")
+df <- df[rowSums(sapply(df[,11], is.na) == 0) > 0, ]
+colSums(sapply(df, is.na))
 
+View(df)
 library(KoNLP)
 
 #build dic
@@ -52,11 +55,11 @@ PosiNega <- function(vec){
   for(line in vec){
     print(paste(SimplePos22(line)))
     nc <- NC(line)
-    print("NCCCCCC")
-    print(nc)
-    print("PPPPPPP")
+    #print("NCCCCCC")
+    #print(nc)
+    #print("PPPPPPP")
     p <- P(line)
-    print(p)
+    #print(p)
     ret <- c(ret, nc[str_length(nc) > 1], p[str_length(p) > 1])
     
     print("------------")
@@ -71,7 +74,15 @@ posi <- readLines("neg_pol_word.txt")
 
 test <- unique(unlist(strsplit(PosiNega(posi[1:9826]), " ")))
 class(PosiNega(str_split("나는 매우 가난하다 그런데 ..", " ")))
-PosiNega("나는 매우 가난하다 그런데 ..")
+
+
+basket.str <- c()
+time.start <- Sys.time()
+for(i in 1:nrow(df)){
+  basket.line <- paste(unique(unlist(strsplit(PosiNega(df$content[i]), " "))), collapse = ",")
+  df$basket[i] <- basket.line
+}
+time.end <- Sys.time()
 
 # data1 <- df$content[1:10]
 # data2 <- Map(extractNoun, txt1)
