@@ -1,7 +1,7 @@
 #install.packages("stringr")
 #install.packages("readxl")
 #install.packages("KoNLP") 
-
+#install.packages("arules")
 
 ################ environment #############
 setwd("/Users/theorist/Documents/R-WorkingDirectory/DataSentiment")
@@ -21,10 +21,11 @@ library(readxl)
 df <- read_excel("NamYang_Data_Refined.xlsx",col_names=T,na="NA")
 df <- df[rowSums(sapply(df[,11], is.na) == 0) > 0, ]
 colSums(sapply(df, is.na))
-View(df)
+#View(df)
 df.bkup <- df
 
 ################### elimination 수정 필요 ######################
+library(stringr)
 str_replace_all(df$content, "[ㄱ-ㅎ]", "") %>%  #remove ㅋㅋㅋ
   str_replace_all("[0-9]", "") %>%              #remove number
   str_replace_all("[[:punct:]]", "")            #remove punctuation
@@ -40,27 +41,61 @@ textToBasket <- function(text){
   attrs <- str_match(taggedText, "(\"|\\+)([가-힣]{2,4})(/ncps|/ncn|/pvg|/paa)") #상태명사, 비서술명사, 일반동사, 성상형용사 # 단어 길이 2~3 안전
   attrs <- unique(na.omit(attrs[,3]))
   basketline <- paste(attrs, collapse = ",")
-  print(text)
-  #print(taggedText) #디버깅용
-  print(basketline)
+  #print(basketline) #print(text) #print(taggedText)  #디버깅용
   return(basketline)
 }
 
 #textToTags("데이터 마이닝 좋다. 텍스트 마이닝 좋다.") #테스트를 하는 곳
 ####################### basket formatting ###############################
-time.start <- Sys.time()
 file <- "basket.txt"
 if (file.exists(file)) file.remove(file)
-for(text in df$content){
-  write.table(textToBasket(text), file = "basket.txt", append = T, row.names = F, col.names = F)
+#멈추지 않는 텍스트: 2316, 4071
+#warning : 1512, 1522
+#tag가 null 텍스트 다수 --> (4568 - 2) - 4485 = 81 개
+for(i in c(1:1511, 1513:1521, 1523:2315, 2317:4070, 4072:4568)){
+#for(i in c(1:100)){
+  print(i)
+  write.table(textToBasket(df$content[i]), file = "basket.txt", append = T, row.names = F, col.names = F, quote = F)
+  i <- i + 1
 }
-time.end <- Sys.time()
 
-(basket <- read.table(file = "basket.txt", strip.white = T))
-
-posi <- readLines("neg_pol_words.txt")
-test <- unique(unlist(strsplit(PosiNega(posi[1:9826]), " ")))
-
+(basket <- read.table(file = "basket.txt", strip.white = T)) #test reading into data frame
+######################## reading transaction ##########################
+library(arules)
+tr.data <- read.transactions(file = "basket.txt", format = "basket", sep = ',')
+######################## exploration on tr.dataansaction ##########################
+summary(tr.data)
+image(tr.data)
+itemFrequencyPlot(tr.data, support = 0.1)
+itemLabels(tr.data)
+######################## association rules mining ##########################
+elim.word <- c("개인거래", "판매", "안전", "미사용", "완료", "분유", "양유") #관심 없는 단어
+rules <- apriori(tr.data,
+                 parameter = list(minlen=2,supp=0.007, conf=0.2),
+                 appearance = list(none = elim.word, default = "both")
+                 )
+rules <- sort(rules, decreasing = TRUE, by = "support")
+inspect(rules)
+######################## new negative keywords ##########################
+nega.word <- c("논란", "이물질") #부정어 등록하는 벡터
+(nega.new <- subset(rules, lhs %in% nega.word))
+rules <- sort(nega.new, decreasing = TRUE, by = "confidence")
+inspect(nega.new)
+######################## new negative keywords ##########################
+nega.word <- c("논란", "이물질", "혼입") #부정어 등록하는 벡터
+(nega.new <- subset(rules, lhs %in% nega.word))
+rules <- sort(nega.new, decreasing = TRUE, by = "confidence")
+inspect(nega.new) 
+######################## new negative keywords ##########################
+nega.word <- c("논란", "이물질", "혼입", "코딱지", "이정", "임페리얼") #부정어 등록하는 벡터
+(nega.new <- subset(rules, lhs %in% nega.word))
+rules <- sort(nega.new, decreasing = TRUE, by = "confidence")
+inspect(nega.new) 
+######################## new negative keywords ##########################
+nega.word <- c("논란", "이물질", "혼입", "코딱지", "이정", "임페리얼", "보내기") #부정어 등록하는 벡터
+(nega.new <- subset(rules, lhs %in% nega.word))
+rules <- sort(nega.new, decreasing = TRUE, by = "confidence")
+inspect(nega.new) 
 ###################### pos tagging 연습 ##########################
 library(stringr)
 #(tagged <- paste(SimplePos22(df$content[1])))
