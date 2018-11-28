@@ -16,13 +16,17 @@ buildDictionary(ext_dic = dics,
                 user_dic = user_d,
                 replace_usr_dic = F,)
 
-##################### data loading ######################
+##################### rawdata loading ######################
 library(readxl)
 df <- read_excel("NamYang_Data_Refined.xlsx",col_names=T,na="NA")
 df <- df[rowSums(sapply(df[,11], is.na) == 0) > 0, ]
 colSums(sapply(df, is.na))
-#View(df)
 df.bkup <- df
+
+##################### sentiment dictionary loading ######################
+sf <- read.table("SentiWord_Dict.txt",sep = '\t', stringsAsFactors = F)
+colSums(sapply(sf, is.na))
+sf.bkup <- sf
 
 ################### elimination 수정 필요 ######################
 library(stringr)
@@ -38,8 +42,9 @@ str_replace_all(df$content, "[ㄱ-ㅎ]", "") %>%  #remove ㅋㅋㅋ
 ###################### pos tagging ##########################
 textToBasket <- function(text){
   taggedText <- paste(MorphAnalyzer(text))
-  attrs <- str_match(taggedText, "(\"|\\+)([가-힣]{2,4})(/ncps|/ncn|/pvg|/paa)") #상태명사, 비서술명사, 일반동사, 성상형용사 # 단어 길이 2~3 안전
-  attrs <- unique(na.omit(attrs[,3]))
+  #attrs <- str_match(taggedText, "(\"|\\+)([가-힣]{1,4})(/ncps|/ncn|/pvg|/paa)") 
+  attrs <- str_match(taggedText, "(\"|\\+)((([가-힣]{2,4})/(ncps|ncn))|(([가-힣]{1,3})/(pvg|paa)))") #상태명사, 비서술명사 (2,4) 일반동사, 성상형용사 (1,3)
+  attrs <- unique(na.omit(c(attrs[,5], attrs[,8])))
   basketline <- paste(attrs, collapse = ",")
   #print(basketline) #print(text) #print(taggedText)  #디버깅용
   return(basketline)
@@ -60,6 +65,23 @@ for(i in c(1:1511, 1513:1521, 1523:2315, 2317:4070, 4072:4568)){
 }
 
 (basket <- read.table(file = "basket.txt", strip.white = T)) #test reading into data frame
+#######################  ###############################
+file <- "basket.sf.txt"
+if (file.exists(file)) file.remove(file)
+#멈추지 않는 텍스트: 2316, 4071
+#warning : 1512, 1522
+#tag가 null 텍스트 다수 --> (4568 - 2) - 4485 = 81 개
+sf$V1[6]
+textToBasket(sf$V1[6])
+textToBasket("정말 매우 가까이하다")
+for(i in c(1:nrow(sf))){
+  #for(i in c(1:100)){
+  print(i)
+  write.table(textToBasket(sf$V1[i]), file = "basket.sf.txt", append = T, row.names = F, col.names = F, quote = F)
+  i <- i + 1
+}
+
+(basket.sf <- read.table(file = "basket.sf.txt", strip.white = T)) #test reading into data frame
 ######################## reading transaction ##########################
 library(arules)
 tr.data <- read.transactions(file = "basket.txt", format = "basket", sep = ',')
@@ -116,9 +138,12 @@ str_match(c("12a", "123b", "1234a", "12345b"), "^([0-9]{2,3})(a|b)$")
 str_match(c("가나다a", "가나다라b", "가나다/paa", "가나/pvg"), "([가-힣]{2,3})(/paa|b|/pvg)")
 str_match(tagged, "([가-힣]{1,3})(/ncps|/pvg|/paa)")
 
-(taggedText <- paste(MorphAnalyzer(df$content[2])))
-(taggedWord <- str_match(taggedText, "(\"|\\+)(([가-힣]{2,4}/(ncps|ncn))|([가-힣]{1,3}/(pvg|paa)))"))
-(na.omit(taggedWord))
-
-
-
+(taggedText <- paste(MorphAnalyzer(df$content[1700])))
+(taggedWord <- str_match(taggedText, "(\"|\\+)((([가-힣]{2,4})/(ncps))|(([가-힣]{1,3})/(pvg)))"))
+unique(na.omit(taggedWord[,c(8)]))
+unique(na.omit(c(taggedWord[,5], taggedWord[,8])))
+na.omit(taggedWord[5])
+na.omit(taggedWord[,5])
+taggedWord(attrs[,8])
+taggedWord(attrs[,8])
+taggedWord[,c(5, 8)]
