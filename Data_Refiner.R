@@ -43,7 +43,7 @@ str_replace_all(df$content, "[ㄱ-ㅎ]", "") %>%  #remove ㅋㅋㅋ
 textToBasket <- function(text){
   taggedText <- paste(MorphAnalyzer(text))
   #attrs <- str_match(taggedText, "(\"|\\+)([가-힣]{1,4})(/ncps|/ncn|/pvg|/paa)") 
-  attrs <- str_match(taggedText, "(\"|\\+)((([가-힣]{2,4})/(ncps|ncn))|(([가-힣]{1,3})/(pvg|paa)))") #상태명사, 비서술명사 (2,4) 일반동사, 성상형용사 (1,3)
+  attrs <- str_match(taggedText, "(\"|\\+)((([가-힣]{2,4})/(ncps|ncn))|(([가-힣]{2,4})/(pvg|paa)))") #상태명사, 비서술명사 (2,4) 일반동사, 성상형용사 (1,3)
   attrs <- unique(na.omit(c(attrs[,5], attrs[,8])))
   basketline <- paste(attrs, collapse = ",")
   #print(basketline) #print(text) #print(taggedText)  #디버깅용
@@ -66,22 +66,12 @@ for(i in c(1:1511, 1513:1521, 1523:2315, 2317:4070, 4072:4568)){
 
 (basket <- read.table(file = "basket.txt", strip.white = T)) #test reading into data frame
 #######################  ###############################
-file <- "basket.sf.txt"
-if (file.exists(file)) file.remove(file)
-#멈추지 않는 텍스트: 2316, 4071
-#warning : 1512, 1522
-#tag가 null 텍스트 다수 --> (4568 - 2) - 4485 = 81 개
-sf$V1[6]
-textToBasket(sf$V1[6])
-textToBasket("정말 매우 가까이하다")
-for(i in c(1:nrow(sf))){
-  #for(i in c(1:100)){
+sf.test <- data.frame()
+for(i in 1:nrow(df)){
   print(i)
-  write.table(textToBasket(sf$V1[i]), file = "basket.sf.txt", append = T, row.names = F, col.names = F, quote = F)
-  i <- i + 1
+  df$sentiment[i] <- sum(sf$V2[which(sf$V1 %in% unlist(str_split(df$content[i], " ")))])
 }
 
-(basket.sf <- read.table(file = "basket.sf.txt", strip.white = T)) #test reading into data frame
 ######################## reading transaction ##########################
 library(arules)
 tr.data <- read.transactions(file = "basket.txt", format = "basket", sep = ',')
