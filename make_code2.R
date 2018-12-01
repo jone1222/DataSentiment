@@ -4,7 +4,7 @@
 #install.packages("arules")
 
 ################ environment #############
-setwd("/Users/theorist/Documents/R-WorkingDirectory/DataSentiment")
+setwd("C:/Users/ok3651004/Desktop/DataSentiment")
 
 library(KoNLP) # Korean natural language processor
 #dictionary buildup
@@ -16,13 +16,20 @@ buildDictionary(ext_dic = dics,
                 user_dic = user_d,
                 replace_usr_dic = F,)
 
-##################### data loading ######################
+##################### rawdata loading ######################
 library(readxl)
 df <- read_excel("NamYang_Data_Refined.xlsx",col_names=T,na="NA")
 df <- df[rowSums(sapply(df[,11], is.na) == 0) > 0, ]
 colSums(sapply(df, is.na))
-#View(df)
 df.bkup <- df
+
+##################### sentiment dictionary loading ######################
+# library(devtools)
+# install_github("plgrmr/readAny", force = T)
+# library(readAny)
+sf <- read_excel("SentiWord_Dict_excel.xlsx",col_names=T,na="NA")
+colSums(sapply(sf, is.na))
+sf.bkup <- sf
 
 ################### elimination 수정 필요 ######################
 library(stringr)
@@ -38,8 +45,9 @@ str_replace_all(df$content, "[ㄱ-ㅎ]", "") %>%  #remove ㅋㅋㅋ
 ###################### pos tagging ##########################
 textToBasket <- function(text){
   taggedText <- paste(MorphAnalyzer(text))
-  attrs <- str_match(taggedText, "(\"|\\+)([가-힣]{2,4})(/ncps|/ncn|/pvg|/paa)") #상태명사, 비서술명사, 일반동사, 성상형용사 # 단어 길이 2~3 안전
-  attrs <- unique(na.omit(attrs[,3]))
+  #attrs <- str_match(taggedText, "(\"|\\+)([가-힣]{1,4})(/ncps|/ncn|/pvg|/paa)") 
+  attrs <- str_match(taggedText, "(\"|\\+)((([가-힣]{2,4})/(ncps|ncn))|(([가-힣]{2,4})/(pvg|paa)))") #상태명사, 비서술명사 (2,4) 일반동사, 성상형용사 (1,3)
+  attrs <- unique(na.omit(c(attrs[,5], attrs[,8])))
   basketline <- paste(attrs, collapse = ",")
   #print(basketline) #print(text) #print(taggedText)  #디버깅용
   return(basketline)
@@ -53,13 +61,80 @@ if (file.exists(file)) file.remove(file)
 #warning : 1512, 1522
 #tag가 null 텍스트 다수 --> (4568 - 2) - 4485 = 81 개
 for(i in c(1:1511, 1513:1521, 1523:2315, 2317:4070, 4072:4568)){
-#for(i in c(1:100)){
+  #for(i in c(1:100)){
   print(i)
   write.table(textToBasket(df$content[i]), file = "basket.txt", append = T, row.names = F, col.names = F, quote = F)
   i <- i + 1
 }
 
 (basket <- read.table(file = "basket.txt", strip.white = T)) #test reading into data frame
+#######################  ###############################
+sf.test <- data.frame()
+for(i in 1:nrow(df)){
+  print(i)
+  df$sentiment[i] <- sum(sf$score[which(sf$text %in% unlist(str_split(df$content[i], " ")))])
+}
+
+senti_rate <- sf$score[which(sf$text %in% unlist(str_split(df$content[29], " ")))]
+senti_rate[2]
+
+for(i in 1:nrow(df)){
+  senti_rate <- sf$score[which(sf$text %in% unlist(str_split(df$content[i], " ")))]
+  if(is.na(senti_rate[1])){
+    next
+  } else{
+    for(j in 1:length(senti_rate)){
+      if(senti_rate[j] == 1){
+        df$good1[i] <- df$good1[i]+1
+      } else if(senti_rate[j] == 2){
+        df$good2[i] <- df$good2[i]+1
+      } else if(senti_rate[j] == -1){
+        df$bad1[i] <- df$bad1[i]+1
+      } else if(senti_rate[j] == -2){
+        df$bad2[i] <- df$bad2[i]+1
+      } else if(senti_rate[j] == 0){
+        df$normal[i] <- df$normal[i]+1
+      }
+    }
+  }
+}
+
+for(i in 1:nrow(df)){
+  senti_rate <- sf$score[which(sf$text %in% unlist(str_split(df$content[i], " ")))]
+  rate_sum <- sum(senti_rate)
+  if(rate_sum == 0){
+    df$sentiment_mean[i] <- 0
+  } else{
+    df$sentiment_mean[i] <- round(sum(senti_rate) / length(senti_rate), digits = 2)  
+  }
+  
+}
+
+for(i in 1:nrow(df)){
+  df$sentiment_mean[i] <- 0
+}
+
+for(i in 1:nrow(df)){
+  df$bad2[i] <- 0
+  df$bad1[i] <- 0
+  df$normal[i] <- 0
+  df$good1[i] <- 0
+  df$good2[i] <- 0
+}
+
+sum(sf$score[which(sf$text %in% unlist(str_split(df$content[1], " ")))])
+
+aa <- sf$score[which(sf$text %in% unlist(str_split(df$content[29], " ")))]
+aa
+aa[1]
+aa[2]
+length(aa)
+
+for(i in 1:nrow(raw_datas)){
+  print(i)
+  raw_datas[i]
+}
+
 ######################## reading transaction ##########################
 library(arules)
 tr.data <- read.transactions(file = "basket.txt", format = "basket", sep = ',')
@@ -73,7 +148,7 @@ elim.word <- c("개인거래", "판매", "안전", "미사용", "완료", "분�
 rules <- apriori(tr.data,
                  parameter = list(minlen=2,supp=0.007, conf=0.2),
                  appearance = list(none = elim.word, default = "both")
-                 )
+)
 rules <- sort(rules, decreasing = TRUE, by = "support")
 inspect(rules)
 ######################## new negative keywords ##########################
@@ -116,9 +191,12 @@ str_match(c("12a", "123b", "1234a", "12345b"), "^([0-9]{2,3})(a|b)$")
 str_match(c("가나다a", "가나다라b", "가나다/paa", "가나/pvg"), "([가-힣]{2,3})(/paa|b|/pvg)")
 str_match(tagged, "([가-힣]{1,3})(/ncps|/pvg|/paa)")
 
-(taggedText <- paste(MorphAnalyzer(df$content[2])))
-(taggedWord <- str_match(taggedText, "(\"|\\+)(([가-힣]{2,4}/(ncps|ncn))|([가-힣]{1,3}/(pvg|paa)))"))
-(na.omit(taggedWord))
-
-
-
+(taggedText <- paste(MorphAnalyzer(df$content[1700])))
+(taggedWord <- str_match(taggedText, "(\"|\\+)((([가-힣]{2,4})/(ncps))|(([가-힣]{1,3})/(pvg)))"))
+unique(na.omit(taggedWord[,c(8)]))
+unique(na.omit(c(taggedWord[,5], taggedWord[,8])))
+na.omit(taggedWord[5])
+na.omit(taggedWord[,5])
+taggedWord(attrs[,8])
+taggedWord(attrs[,8])
+taggedWord[,c(5, 8)]
