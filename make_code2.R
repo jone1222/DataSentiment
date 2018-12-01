@@ -4,7 +4,7 @@
 #install.packages("arules")
 
 ################ environment #############
-setwd("C:/Users/ok3651004/Desktop/DataSentiment")
+# setwd("C:/Users/ok3651004/Desktop/DataSentiment")
 
 library(KoNLP) # Korean natural language processor
 #dictionary buildup
@@ -70,6 +70,20 @@ for(i in c(1:1511, 1513:1521, 1523:2315, 2317:4070, 4072:4568)){
 (basket <- read.table(file = "basket.txt", strip.white = T)) #test reading into data frame
 #######################  ###############################
 sf.test <- data.frame()
+
+
+
+for(i in 1:nrow(df)){
+  df$sentiment_mean[i] <- 0
+  df$bad2[i] <- 0
+  df$bad1[i] <- 0
+  df$normal[i] <- 0
+  df$good1[i] <- 0
+  df$good2[i] <- 0
+  df$good_total[i] <- 0
+  df$bad_total[i] <- 0
+}
+
 for(i in 1:nrow(df)){
   print(i)
   df$sentiment[i] <- sum(sf$score[which(sf$text %in% unlist(str_split(df$content[i], " ")))])
@@ -111,16 +125,85 @@ for(i in 1:nrow(df)){
 }
 
 for(i in 1:nrow(df)){
-  df$sentiment_mean[i] <- 0
+  if((df$good1[i]+df$good2[i])==0)
+    df$good_total[i] <- 0
+  else
+    df$good_total[i] <- (df$good1[i] + df$good2[i]*2)/(df$good1[i]+df$good2[i])
+  if((df$bad1[i]+df$bad2[i])==0)
+    df$bad_total[i] <- 0
+  else
+    df$bad_total[i] <- (df$bad1[i] + df$bad2[i]*2)/(df$bad1[i]+df$bad2[i])
 }
 
-for(i in 1:nrow(df)){
-  df$bad2[i] <- 0
-  df$bad1[i] <- 0
-  df$normal[i] <- 0
-  df$good1[i] <- 0
-  df$good2[i] <- 0
+colnames(df)
+#check elbow
+find_elbow <- function(data,cols){
+  wss <- 0
+  for(i in 1:10){
+    wss[i] <- sum(kmeans( data[cols], centers=i ) $ withiness )
+  }
+  plot( 1:10, wss, type="b",xlab="The Number of Clusters", ylab = "Within group sum of squares")
 }
+# [12] "sentiment_mean"
+# [13] "bad2"           "bad1"           "normal"         "good1"         
+# [17] "good2"          "good_total"     "bad_total"      "sentiment"  
+
+
+#kmeans
+find_elbow(df,13:19)
+df.kmeans <- kmeans(df[,18:19], centers=2)
+plot(df[,18:19],col=df.kmeans$cluster,main="good_total-bad_total")
+
+cluster_1 = which(df.kmeans$cluster==1)
+cluster_2 = which(df.kmeans$cluster==2)
+
+#world cloud
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+
+#remove punctual characters
+df$content <- gsub("[.,():;+-]","",df$content)
+df$content <- gsub("[[:punct:]]", " ", df$content)
+df$content <- gsub("]","",df$content)
+df$content <- gsub("'", "", df$content)
+df$content <- gsub("[0-9]","",df$content)
+df$content <- gsub("[a-z]","",df$content)
+df$content <- gsub("[A-Z]","",df$content)
+
+#remove quotation ' , "
+df$content <- noquote(df$content)
+
+df$NounContent <- sapply(df$content,extractNoun,USE.NAMES = F)
+NounContentList_1 <- unlist(df$NounContent[cluster_1])
+NounContentList_2 <- unlist(df$NounContent[cluster_2])
+
+
+LastData_1 <- Filter(function(x){
+  nchar(x)>=2
+},NounContentList_1)
+LastData_2 <- Filter(function(x){
+  nchar(x)>=2
+},NounContentList_2)
+
+View(LastData)
+ListWordCount_1 <- table(LastData_1)
+ListWordCount_2 <- table(LastData_2)
+View(ListWordCount)
+
+windows()
+windowsFonts(font=windowsFont("맑은고딕"))
+wordcloud(names(ListWordCount_1),freq=ListWordCount_1,scale=c(5,0.2),
+          rot.per=0.1,min.freq=3,max.words = 100, 
+          random.order=F,random.color=T,
+          colors=brewer.pal(11,"Paired"),family="font")
+wordcloud(names(ListWordCount_2),freq=ListWordCount_2,scale=c(5,0.2),
+          rot.per=0.1,min.freq=3,max.words = 100, 
+          random.order=F,random.color=T,
+          colors=brewer.pal(11,"Paired"),family="font")
+
+####################################################
 
 sum(sf$score[which(sf$text %in% unlist(str_split(df$content[1], " ")))])
 
