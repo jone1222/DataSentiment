@@ -170,7 +170,20 @@ cluster_6
 # select bad : 1 ~ 2 / good : 0 (only has bad keyword) => mostly bad contents
 df_onlybad_clustered <- df[cluster_4, ]
 
-# 
+##################### clusterd_bad_keyword vextor ######################
+clusterd_bad_keyword <-c()
+for(i in 1:nrow(df_onlybad_clustered)){
+  keyword <- df_onlybad_clustered$very_bad_keywords[i]
+  keyword2 <- df_onlybad_clustered$bad_keywords[i]
+  frag <- str_split(keyword, ",")
+  frag2 <- str_split(keyword2, ",")
+  for(j in 1: length(frag[[1]])){
+    clusterd_bad_keyword <- c(clusterd_bad_keyword, frag[[1]][j])
+    clusterd_bad_keyword <- c(clusterd_bad_keyword, frag2[[1]][j])
+  }
+}
+clusterd_bad_keyword <- na.omit(clusterd_bad_keyword)
+clusterd_bad_keyword
 
 
 
