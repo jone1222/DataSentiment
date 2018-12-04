@@ -3,6 +3,7 @@
 # install.packages("KoNLP") 
 # install.packages("arules")
 # install.packages("wordcloud2")
+# install.packages("gcookbook")
 
 
 ##################### setting ##################### 
@@ -15,6 +16,10 @@ library(wordcloud2)
 library(caret)
 library(cluster)
 library(arules)
+library(ggplot2) # fancy k-means plot
+library(gcookbook)
+library(plyr)
+library(reshape2)
 
 ##################### rawdata loading ##################### 
 df <- read_excel("NamYang_Data_Added_Total.xlsx",col_names=T,na="NA")
@@ -128,7 +133,7 @@ c_bad_list
 
 ###################### pos tagging ##########################  -> not use
 taggedText <- paste(MorphAnalyzer(company_bad_keyword))
-attrs <- str_match(taggedText, "(\"|\\+)([가-힣]{2,4})(/ncps|/ncn|/pvg|/paa)") #상태명사, 비서명사, 일반동사, 성상형용사 # 단어 길이 2~3 안전
+attrs <- str_match(taggedText, "(\"|\\+)([가-힣]{2,4})(/ncps|/ncn|/pvg|/paa)")
 company_bad_keyword_tagged <- na.omit(attrs[,3])
 company_bad_keyword_tagged
 
@@ -146,6 +151,7 @@ plot(1:15, wss, type = "b", xlab = "클러스터 수", ylab = "ss값")
 
 # alg
 df.kmeans <- kmeans(df[,c("good_total", "bad_total")], centers=6)
+df.kmeans
 df.kmeans$cluster
 plot(df[,c("good_total", "bad_total")],col=df.kmeans$cluster, main="good_total-bad_total")
 
@@ -153,6 +159,9 @@ plot(df[,c("good_total", "bad_total")],col=df.kmeans$cluster, main="good_total-b
 text(x=df$good_total, y=df$bad_total, labels = df$index, col=df.kmeans$cluster+1)
 points(df.kmeans$centers[,c("good_total", "bad_total")], pch=8, cex=3)
 
+# show cluster for fancy plot
+qplot(df$good_total, df$bad_total)
+ggplot(df, aes(x = good_total, y = bad_total)) + geom_point(aes(colour=df.kmeans$cluster))
 # clustering index
 cluster_1 = which(df.kmeans$cluster==1)
 cluster_1
@@ -168,22 +177,112 @@ cluster_6 = which(df.kmeans$cluster==6)
 cluster_6
 
 # select bad : 1 ~ 2 / good : 0 (only has bad keyword) => mostly bad contents
-df_onlybad_clustered <- df[cluster_4, ]
+df_onlybad_clustered <- df[cluster_5, ]
+df.kmeans
 
 ##################### clusterd_bad_keyword vextor ######################
 clusterd_bad_keyword <-c()
+# -2 keywords
 for(i in 1:nrow(df_onlybad_clustered)){
   keyword <- df_onlybad_clustered$very_bad_keywords[i]
-  keyword2 <- df_onlybad_clustered$bad_keywords[i]
-  frag <- str_split(keyword, ",")
-  frag2 <- str_split(keyword2, ",")
-  for(j in 1: length(frag[[1]])){
-    clusterd_bad_keyword <- c(clusterd_bad_keyword, frag[[1]][j])
-    clusterd_bad_keyword <- c(clusterd_bad_keyword, frag2[[1]][j])
+  if(keyword == ""){
+    next
+  } else{
+    frag <- str_split(keyword, ",")
+    for(j in 1: length(frag[[1]])){
+      clusterd_bad_keyword <- c(clusterd_bad_keyword, frag[[1]][j])
+    }
   }
 }
-clusterd_bad_keyword <- na.omit(clusterd_bad_keyword)
+
+# -1 keywords
+for(i in 1:nrow(df_onlybad_clustered)){
+  keyword <- df_onlybad_clustered$bad_keywords[i]
+  if(keyword == ""){
+    next
+  } else{
+    frag <- str_split(keyword, ",")
+    for(j in 1: length(frag[[1]])){
+      clusterd_bad_keyword <- c(clusterd_bad_keyword, frag[[1]][j])
+    }
+  }
+}
+
 clusterd_bad_keyword
+# make clusterd_bad_keyword table
+clusterd_bad_list <- table(clusterd_bad_keyword)
+
+
+##################### show wordcloud2 ######################
+wordcloud2(clusterd_bad_list, size=1, minSize = 1)
+
+
+##################### make transaction data ######################
+for(i in 1:nrow(df_onlybad_clustered)){
+  if(textToBasket(df_onlybad_clustered$content_all[i])==""){
+    next
+  } else{
+    write.table(textToBasket(df_onlybad_clustered$content_all[i]), file = "bad_contents_transaction.txt", append = T, row.names = F, col.names = F, quote = F)
+  }
+}
+
+##################### read transaction data ######################
+tr.data.bad_content <- read.transactions(file = "bad_contents_transaction.txt", format = "basket", sep = ',')
+
+##################### find new bad_keyword use apriori ######################
+# show transaction data
+summary(tr.data.bad_content)
+image(tr.data.bad_content)
+itemFrequencyPlot(tr.data.bad_content, support = 0.16)
+itemLabels(tr.data.bad_content)
+# use apriori
+bad_keyword_rule <- apriori(tr.data.bad_content,
+                  parameter = list(minlen=2, supp=0.2, conf=0.2))
+# sort
+bad_keyword_rule <- sort(bad_keyword_rule, decreasing = TRUE, by = "support")
+# show rule
+inspect(bad_keyword_rule)
+# insert our keyword => no selected
+clusterd_bad_keyword_unique <- unique(clusterd_bad_keyword)
+clusterd_bad_keyword_unique
+nega.new <- subset(bad_keyword_rule, items %pin% clusterd_bad_keyword_unique)
+inspect(nega.new)
+
+# delete keword(no_related)
+elim.word <- c("모르", "양유", "보이", "이제", "영상", "맛잇", "대리점", "회사", "사실", "분유", "제품", "등이", "동아", 
+               "사업", "기업", "하기", "되기", "양에","자료", "내용")
+# use apriori delete no related keyword
+bad_keyword_rule_concen <- apriori(tr.data.bad_content,
+                  parameter = list(minlen=2, supp=0.08, conf=0.5),
+                  appearance = list(none = elim.word, default = "both"))
+bad_keyword_rule_concen <- sort(bad_keyword_rule_concen, decreasing = TRUE, by = "support")
+inspect(bad_keyword_rule_concen)
+
+# extract new bad word
+new_bad_keyword_list <- as(rhs(bad_keyword_rule_concen), "list")
+new_bad_keyword <- c()
+for(i in 1:length(new_bad_keyword_list)){
+  new_bad_keyword <- c(new_bad_keyword, new_bad_keyword_list[[i]])
+}
+new_bad_keyword
+
+# make new bad word table
+new_bad_keyword_table <- table(new_bad_keyword)
+new_bad_keyword_table
+
+# show new bad word for wordcloud
+wordcloud2(new_bad_keyword_table, size=0.8, minSize = 1)
+
+# new bad keyword
+beta_bad_keyword <- unique(new_bad_keyword)
+
+
+# insert our keyword in new rule
+nega.new <- subset(bad_keyword_rule_concen, items %pin% "아니")
+nega.new <- subset(bad_keyword_rule_concen, items %pin% "다르")
+inspect(nega.new)
+
+df_new_bad_keyword <- df[grep("갑질", df$content_all) ,]
 
 
 
