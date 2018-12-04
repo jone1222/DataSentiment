@@ -31,17 +31,13 @@ sf <- read_excel("SentiWord_Dict_excel.xlsx",col_names=T,na="NA")
 colSums(sapply(sf, is.na))
 sf.bkup <- sf
 
-################### elimination 수정 필요 ######################
+################### elimination ?닔?젙 ?븘?슂 ######################
 library(stringr)
-str_replace_all(df$content, "[ㄱ-ㅎ]", "") %>%  #remove ㅋㅋㅋ
-  str_replace_all("[0-9]", "") %>%              #remove number
-  str_replace_all("[[:punct:]]", "")            #remove punctuation
-
-
-# test <- "ㅋㅋㅋ ㅎㅎㅎ 1월 2일 ^^ ;; @@ :)"
-# str_replace_all(test, "[ㄱ-ㅎ]", "") %>%  #remove ㅋㅋㅋ
+# str_replace_all(df$content_all, "[ㄱ-ㅎ]", "") %>%  #remove ㅋㅋㅋㅋ
 #   str_replace_all("[0-9]", "") %>%              #remove number
 #   str_replace_all("[[:punct:]]", "")            #remove punctuation
+
+
 ###################### pos tagging ##########################
 textToBasket <- function(text){
   taggedText <- paste(MorphAnalyzer(text))
@@ -53,21 +49,6 @@ textToBasket <- function(text){
   return(basketline)
 }
 
-#textToTags("데이터 마이닝 좋다. 텍스트 마이닝 좋다.") #테스트를 하는 곳
-####################### basket formatting ###############################
-file <- "basket.txt"
-if (file.exists(file)) file.remove(file)
-#멈추지 않는 텍스트: 2316, 4071
-#warning : 1512, 1522
-#tag가 null 텍스트 다수 --> (4568 - 2) - 4485 = 81 개
-for(i in c(1:1511, 1513:1521, 1523:2315, 2317:4070, 4072:4568)){
-  #for(i in c(1:100)){
-  print(i)
-  write.table(textToBasket(df$content[i]), file = "basket.txt", append = T, row.names = F, col.names = F, quote = F)
-  i <- i + 1
-}
-
-(basket <- read.table(file = "basket.txt", strip.white = T)) #test reading into data frame
 #######################  ###############################
 sf.test <- data.frame()
 
@@ -88,9 +69,6 @@ for(i in 1:nrow(df)){
   print(i)
   df$sentiment[i] <- sum(sf$score[which(sf$text %in% unlist(str_split(df$content_all[i], " ")))])
 }
-
-senti_rate <- sf$score[which(sf$text %in% unlist(str_split(df$content[29], " ")))]
-senti_rate[2]
 
 for(i in 1:nrow(df)){
   senti_rate <- sf$score[which(sf$text %in% unlist(str_split(df$content_all[i], " ")))]
@@ -148,50 +126,47 @@ find_elbow <- function(data,cols){
 # [17] "good2"          "good_total"     "bad_total"      "sentiment"  
 
 
+df_201202 <- which(df$upload_time<'2013-01-01')
+df_201301 <- which(df$upload_time>='2013-01-01' & df$upload_time<'2013-08-01')
+df_201302 <- which(df$upload_time>='2013-08-01' & df$upload_time<'2014-01-01')
+df_201401 <- which(df$upload_time>='2014-01-01' & df$upload_time<'2014-08-01')
+df_201402 <- which(df$upload_time>='2014-08-01' & df$upload_time<'2015-01-01')
+df_201501 <- which(df$upload_time>='2015-01-01' & df$upload_time<'2015-08-01')
+df_201502 <- which(df$upload_time>='2015-08-01' & df$upload_time<'2016-01-01')
+df_201601 <- which(df$upload_time>='2016-01-01' & df$upload_time<'2016-08-01')
+df_201602 <- which(df$upload_time>='2016-08-01' & df$upload_time<'2017-01-01')
+df_201701 <- which(df$upload_time>='2017-01-01' & df$upload_time<'2017-08-01')
+df_201702 <- which(df$upload_time>='2017-08-01' & df$upload_time<'2018-01-01')
+df_201801 <- which(df$upload_time>='2018-01-01' & df$upload_time<'2018-08-01')
+df_201802 <- which(df$upload_time>='2018-08-01' & df$upload_time<'2019-01-01')
+
+df$upload_time[df_201202] <- '2012-08-01'
+
+df$upload_time[df_201301] <- '2013-01-01'
+df$upload_time[df_201302] <- '2013-08-01'
+df$upload_time[df_201401] <- '2014-01-01'
+df$upload_time[df_201402] <- '2014-08-01'
+df$upload_time[df_201501] <- '2015-01-01'
+df$upload_time[df_201502] <- '2015-08-01'
+df$upload_time[df_201601] <- '2016-01-01'
+df$upload_time[df_201602] <- '2016-08-01'
+df$upload_time[df_201701] <- '2017-01-01'
+df$upload_time[df_201702] <- '2017-08-01'
+df$upload_time[df_201801] <- '2018-01-01'
+df$upload_time[df_201802] <- '2018-08-01'
+
+
 # min(df$upload_time) #2009-08-19
 # max(df$upload_time) #2018-11-29
 # 
-# df_201202 <- which(df$upload_time<'2013-01-01')
-# df_201301 <- which(df$upload_time>='2013-01-01' & df$upload_time<'2013-08-01')
-# df_201302 <- which(df$upload_time>='2013-08-01' & df$upload_time<'2014-01-01')
-# df_201401 <- which(df$upload_time>='2014-01-01' & df$upload_time<'2014-08-01')
-# df_201402 <- which(df$upload_time>='2014-08-01' & df$upload_time<'2015-01-01')
-# df_201501 <- which(df$upload_time>='2015-01-01' & df$upload_time<'2015-08-01')
-# df_201502 <- which(df$upload_time>='2015-08-01' & df$upload_time<'2016-01-01')
-# df_201601 <- which(df$upload_time>='2016-01-01' & df$upload_time<'2016-08-01')
-# df_201602 <- which(df$upload_time>='2016-08-01' & df$upload_time<'2017-01-01')
-# df_201701 <- which(df$upload_time>='2017-01-01' & df$upload_time<'2017-08-01')
-# df_201702 <- which(df$upload_time>='2017-08-01' & df$upload_time<'2018-01-01')
-# df_201801 <- which(df$upload_time>='2018-01-01' & df$upload_time<'2018-08-01')
-# df_201802 <- which(df$upload_time>='2018-08-01' & df$upload_time<'2019-01-01')
-# 
-# df$upload_time[df_201202] <- '2012-08-01'
-# 
-# df$upload_time[df_201301] <- '2013-01-01'
-# df$upload_time[df_201302] <- '2013-08-01'
-# df$upload_time[df_201401] <- '2014-01-01'
-# df$upload_time[df_201402] <- '2014-08-01'
-# df$upload_time[df_201501] <- '2015-01-01'
-# df$upload_time[df_201502] <- '2015-08-01'
-# df$upload_time[df_201601] <- '2016-01-01'
-# df$upload_time[df_201602] <- '2016-08-01'
-# df$upload_time[df_201701] <- '2017-01-01'
-# df$upload_time[df_201702] <- '2017-08-01'
-# df$upload_time[df_201801] <- '2018-01-01'
-# df$upload_time[df_201802] <- '2018-08-01'
 
 View(df)
 
 library(ggplot2)
-as.vector(levels(as.factor(df$upload_time)))
 
 time_df <- data.frame(matrix(NA,nrow=13,ncol=4))
 colnames(time_df) <- c('time','pos','neg','total')
 time_df$time <- as.vector(levels(as.factor(df$upload_time)))
-
-length(which((as.character(df$upload_time))=="2018-07-31 15:00:00"))
-
-View(df)
 df_class_refined <- df[!is.na(df$class),]
 
 for(i in 1:length(levels(as.factor(df$upload_time)))){
@@ -200,7 +175,7 @@ for(i in 1:length(levels(as.factor(df$upload_time)))){
   
   pos_count <- length(which((as.character(df_class_refined$upload_time)==target_date) & (df_class_refined$class==3)))
   neg_count <- length(which((as.character(df_class_refined$upload_time)==target_date) & (df_class_refined$class==2)))
-
+  
   time_df$pos[i] <- pos_count
   time_df$neg[i] <- neg_count
   time_df$total[i] <- pos_count+neg_count
@@ -217,17 +192,16 @@ for(i in 1:length(levels(as.factor(df$upload_time)))){
   print(target_date)
   
   senti_pos_count <- length(which((as.character(df$upload_time)==target_date) & (df$sentiment_mean>0)))
-  senti_neutral_count <- length(which((as.character(df$upload_time)==target_date) & (df$sentiment_mean==0)))
-  senti_neg_count <- length(which((as.character(df$upload_time)==target_date) & (df$sentiment_mean<0)))
+  senti_neg_count <- length(which((as.character(df$upload_time)==target_date) & (df$sentiment_mean<=0)))
   
   time_df$senti_pos[i] <- senti_pos_count
   time_df$senti_neg[i] <- senti_neg_count
-  time_df$senti_neutral[i] <- senti_neutral_count
+  
 }
-time_df$senti_toal <- time_df$senti_pos+time_df$senti_neg+time_df$senti_neutral
+time_df$senti_toal <- time_df$senti_pos+time_df$senti_neg
 time_df$senti_pos_rate <- round(time_df$senti_pos/time_df$senti_toal,digits=2)
 time_df$senti_neg_rate <- round(time_df$senti_neg/time_df$senti_toal,digits=2)
-time_df$senti_neutral_rate <- round(time_df$senti_neutral/time_df$senti_toal,digits=2)
+
 
 time_df_reshape <- as.data.frame(matrix(NA,nrow=26,ncol=6))
 colnames(time_df_reshape) <- c('time','class','count','rate','senti_count','senti_rate')
@@ -258,12 +232,14 @@ colnames(time_df_reshape)
 
 
 time_df_reshape$time <- gsub('-31 15:00:00','',time_df_reshape$time)
-time_df_reshape$time <- gsub('-31','',time_df_reshape$time)
+df$upload_time <- gsub('-31 15:00:00','',df$upload_time)
 time_df_reshape_pos <- time_df_reshape[time_df_reshape$class=='pos',]
 time_df_reshape_neg <- time_df_reshape[time_df_reshape$class=='neg',]
 
 time_df_reshape_pos
 time_df_reshape_neg
+
+
 
 windows()
 ggplot()+
@@ -271,6 +247,8 @@ ggplot()+
   geom_line(data=time_df_reshape_neg,aes(x=time,y=senti_rate,group=1),color="red")+
   xlab('Time')+
   ylab('Rate')
+
+
 
 #kmeans
 find_elbow(df,13:19)
@@ -287,18 +265,18 @@ library(wordcloud)
 library(RColorBrewer)
 
 #remove punctual characters
-df$content <- gsub("[.,():;+-]","",df$content)
-df$content <- gsub("[[:punct:]]", " ", df$content)
-df$content <- gsub("]","",df$content)
-df$content <- gsub("'", "", df$content)
-df$content <- gsub("[0-9]","",df$content)
-df$content <- gsub("[a-z]","",df$content)
-df$content <- gsub("[A-Z]","",df$content)
+df$content_all <- gsub("[.,():;+-]","",df$content_all)
+df$content_all <- gsub("[[:punct:]]", " ", df$content_all)
+df$content_all <- gsub("]","",df$content_all)
+df$content_all <- gsub("'", "", df$content_all)
+df$content_all <- gsub("[0-9]","",df$content_all)
+df$content_all <- gsub("[a-z]","",df$content_all)
+df$content_all <- gsub("[A-Z]","",df$content_all)
 
 #remove quotation ' , "
-df$content <- noquote(df$content)
+df$content_all <- noquote(df$content_all)
 
-df$NounContent <- sapply(df$content,extractNoun,USE.NAMES = F)
+df$NounContent <- sapply(df$content_all,extractNoun,USE.NAMES = F)
 NounContentList_1 <- unlist(df$NounContent[cluster_1])
 NounContentList_2 <- unlist(df$NounContent[cluster_2])
 
@@ -310,10 +288,9 @@ LastData_2 <- Filter(function(x){
   nchar(x)>=2
 },NounContentList_2)
 
-View(LastData)
 ListWordCount_1 <- table(LastData_1)
 ListWordCount_2 <- table(LastData_2)
-View(ListWordCount)
+ListWordCount_1 <- ListWordCount_1[ListWordCount_1>20]
 
 windows()
 windowsFonts(font=windowsFont("맑은고딕"))
@@ -326,6 +303,105 @@ wordcloud(names(ListWordCount_2),freq=ListWordCount_2,scale=c(5,0.2),
           random.order=F,random.color=T,
           colors=brewer.pal(11,"Paired"),family="font")
 
+wordcloud2(ListWordCount_1, size=4, minSize = 1)
+
+
+#########timeSeries Data Topic############
+time_category <- as.vector(levels(as.factor(df$upload_time)))
+
+pos_topic <- data.frame(matrix(NA,nrow=13,ncol=2))
+colnames(pos_topic) <- c("upload_time","topics")
+neg_topic <- data.frame(matrix(NA,nrow=13,ncol=2))
+colnames(neg_topic) <- c("upload_time","topics")
+
+for(i in 1:length(time_category)){
+  target_date <- levels(as.factor(df$upload_time))[[i]]
+  #by Sentiment rate
+  NounContentList_pos <- unlist(df$NounContent[which((as.character(df$upload_time)==target_date) & df$sentiment_mean > 0)])
+  NounContentList_neg <- unlist(df$NounContent[which((as.character(df$upload_time)==target_date) & df$sentiment_mean <= 0)])
+  # pos_count <- length(which((as.character(df_class_refined$upload_time)==target_date) & (df_class_refined$class==3)))
+
+  LastData_pos <- Filter(function(x){
+    nchar(x)>=2
+  },NounContentList_pos)
+  LastData_neg <- Filter(function(x){
+    nchar(x)>=2
+  },NounContentList_neg)
+
+  ListWordCount_pos <- table(LastData_pos)
+  ListWordCount_neg <- table(LastData_neg)
+
+  pos_topic[["upload_time"]][i] <- target_date
+  pos_len <- length(ListWordCount_pos)
+  pos_top7 <- ListWordCount_pos[order(ListWordCount_pos)[(pos_len - 7):pos_len]]
+  pos_topic[["topics"]][i] <- paste(as.vector(as.data.frame(pos_top7)[[1]]),collapse=",")
+  
+  neg_topic[["upload_time"]][i] <- target_date
+  neg_len <- length(ListWordCount_neg)
+  neg_top7 <- ListWordCount_neg[order(ListWordCount_neg)[(neg_len - 7):neg_len]]
+  neg_topic[["topics"]][i] <- paste(as.vector(as.data.frame(neg_top7)[[1]]),collapse=",")
+}
+
+windows()
+ggplot()+
+  geom_line(data=time_df_reshape_pos,aes(x=time,y=senti_rate,group=1),color="blue")+
+  geom_line(data=time_df_reshape_neg,aes(x=time,y=senti_rate,group=1),color="red")+
+  xlab('Time')+
+  ylab('Rate')
+
+time_pos_df <-cbind(time_df_reshape_pos,topics=pos_topic[["topics"]])
+time_neg_df <-cbind(time_df_reshape_neg,topics=neg_topic[["topics"]])
+
+windows()
+ggplot(time_pos_df,aes(x=time,y=senti_rate))+
+  geom_text(aes(label=topics),color="blue",size=5,fontface="bold",check_overlap = T)+
+  geom_line(aes(x=time,y=senti_rate,group=1),color="blue")+
+  geom_text(data=time_neg_df,aes(label=topics),color="red",size=5,fontface="bold",check_overlap = T)+
+  geom_line(data=time_neg_df,aes(x=time,y=senti_rate,group=1),color="red")
+# for(i in 1:length(time_category)){
+#   #by ground-truth class
+#   
+#   
+# }
+
+
+
+
+create_wordcloud <- function(data,content='content_all',row_index=1:nrow(data)){
+  #world cloud
+  library(tm)
+  library(SnowballC)
+  library(wordcloud2)
+  library(RColorBrewer)
+  
+  content_vector <- data[,content]
+  #remove punctual characters
+  content_vector <- gsub("[.,():;+-]","",content_vector)
+  content_vector <- gsub("[[:punct:]]", " ", content_vector)
+  content_vector <- gsub("]","",content_vector)
+  content_vector <- gsub("'", "", content_vector)
+  content_vector <- gsub("[0-9]","",content_vector)
+  content_vector <- gsub("[a-z]","",content_vector)
+  content_vector <- gsub("[A-Z]","",content_vector)
+  
+  #remove quotation ' , "
+  content_vector <- noquote(content_vector)
+
+  NounContent <- sapply(content_vector,extractNoun,USE.NAMES = F)
+  NounContentList <- unlist(NounContent[row_index])
+  
+  LastData <- Filter(function(x){
+    nchar(x)>=2
+  },NounContentList)
+  
+  ListWordCount <- table(LastData)
+  
+  
+  # windows()
+  # windowsFonts(font=windowsFont("맑은고딕"))
+  wordcloud2(ListWordCount, size=4, minSize = 1)
+}
+# create_wordcloud(df)
 ####################################################
 
 sum(sf$score[which(sf$text %in% unlist(str_split(df$content[1], " ")))])
