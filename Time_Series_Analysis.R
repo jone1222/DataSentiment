@@ -52,8 +52,6 @@ textToBasket <- function(text){
 #######################  ###############################
 sf.test <- data.frame()
 
-
-
 for(i in 1:nrow(df)){
   df$sentiment_mean[i] <- 0
   df$bad2[i] <- 0
@@ -363,8 +361,6 @@ ggplot(time_pos_df,aes(x=time,y=senti_rate))+
 #   
 #   
 # }
-
-
 
 
 create_wordcloud <- function(data,content='content_all',row_index=1:nrow(data)){
